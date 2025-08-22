@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Mail } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import Link from "next/link"
 
 export default function SignUpForm() {
@@ -19,7 +19,6 @@ export default function SignUpForm() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [emailSent, setEmailSent] = useState(false)
   const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -45,9 +44,6 @@ export default function SignUpForm() {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/verify`,
-        },
       })
 
       if (signUpError) {
@@ -55,62 +51,13 @@ export default function SignUpForm() {
         return
       }
 
-      const response = await fetch("/api/auth/send-verification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        setError(errorData.error || "Failed to send verification email")
-        return
-      }
-
-      setEmailSent(true)
+      router.push("/dashboard")
     } catch (error) {
       console.error("[v0] Sign up error:", error)
       setError("An unexpected error occurred. Please try again.")
     } finally {
       setLoading(false)
     }
-  }
-
-  if (emailSent) {
-    return (
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-            <Mail className="h-6 w-6 text-green-600" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
-          <CardDescription>We've sent a verification link to {email}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert>
-            <AlertDescription>
-              <strong>Important:</strong> After clicking the verification link in your email, please return here and log
-              in manually with your email and password.
-            </AlertDescription>
-          </Alert>
-
-          <div className="text-center space-y-2">
-            <p className="text-sm text-gray-600">Didn't receive the email? Check your spam folder.</p>
-            <Button variant="outline" onClick={() => setEmailSent(false)} className="w-full">
-              Try Again
-            </Button>
-          </div>
-
-          <div className="text-center">
-            <Link href="/auth/sign-in" className="text-sm text-blue-600 hover:underline">
-              Already verified? Sign in here
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    )
   }
 
   return (
@@ -178,7 +125,7 @@ export default function SignUpForm() {
         </form>
 
         <div className="mt-4 text-center">
-          <Link href="/auth/sign-in" className="text-sm text-blue-600 hover:underline">
+          <Link href="/auth/login" className="text-sm text-blue-600 hover:underline">
             Already have an account? Sign in
           </Link>
         </div>
