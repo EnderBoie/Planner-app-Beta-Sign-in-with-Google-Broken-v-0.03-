@@ -5,7 +5,7 @@ interface ResendEmailOptions {
 }
 
 export async function sendEmail({ to, subject, html }: ResendEmailOptions) {
-  const RESEND_API_KEY = process.env.RESEND_API_KEY
+  const RESEND_API_KEY = process.env.RESEND_API_KEY || "re_HpiBQ28P_ENp7ghdjvwipUPZeQNCp6r1z"
 
   if (!RESEND_API_KEY) {
     console.error("[v0] RESEND_API_KEY not found in environment variables")

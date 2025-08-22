@@ -1,41 +1,41 @@
-import { createClient } from "@supabase/supabase-js"
+import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function updateSession(request: NextRequest) {
-  const supabaseResponse = NextResponse.next({
+  let supabaseResponse = NextResponse.next({
     request,
   })
 
-  // Create a simple client for middleware
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-
-  // Get user from the request cookies
-  const accessToken = request.cookies.get("sb-access-token")?.value
-  const refreshToken = request.cookies.get("sb-refresh-token")?.value
-
-  let user = null
-  if (accessToken) {
-    try {
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser(accessToken)
-      user = authUser
-    } catch (error) {
-      // Token might be expired, try to refresh
-      if (refreshToken) {
-        try {
-          const {
-            data: { user: refreshedUser },
-          } = await supabase.auth.refreshSession({
-            refresh_token: refreshToken,
+  // With Fluid compute, don't put this client in a global environment
+  // variable. Always create a new one on each request.
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
           })
-          user = refreshedUser
-        } catch (refreshError) {
-          // Refresh failed, user needs to log in again
-        }
-      }
-    }
-  }
+          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
+        },
+      },
+    },
+  )
+
+  // Do not run code between createServerClient and
+  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
+  // issues with users being randomly logged out.
+
+  // IMPORTANT: If you remove getUser() and you use server-side rendering
+  // with the Supabase client, your users may be randomly logged out.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (
     request.nextUrl.pathname !== "/" &&
@@ -49,5 +49,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // IMPORTANT: You *must* return the supabaseResponse object as it is.
   return supabaseResponse
 }
